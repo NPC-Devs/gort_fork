@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<head>
+    <title>Agent Chat</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#000000" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <link type="text/css" rel="stylesheet" href="css/global.css?"+Math.random()/>
+    
+    <script type="importmap">
+      {
+        "imports": {
+          "@material/web/": "https://esm.run/@material/web/"
+        }
+      }
+    </script>
+    <script type="module">
+      import '@material/web/all.js';
+      import {styles as typescaleStyles} from '@material/web/typography/md-typescale-styles.js';
+      document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+    </script>
+  </head>
+<body>
+    <div id="main">
+        <div id="page-main">
+            <div id="page-content">
+                <div class="base-row" style="text-align:center;">
+                    <span style="font-weight:700;font-size:24px;">
+                        Agent Chat
+                    </span>
+                </div>
+                <div id="select-section" class="base-row">
+                    <select id="bot-selection" type="text" class="clean-select">
+                    </select>
+                </div>
+                <div class="base-row">
+                    <div id="message-box">
+                    </div>
+                </div>
+                <div class="base-row">
+                    <input id="message-input" type="text" class="full-input">
+                </div>
+                <div class="base-row">
+                    <span id="send-loader" style="display:none;float:right;"><md-circular-progress indeterminate></md-circular-progress></span>
+                    <button id="send-button" class="green-button" style="float:right;" onClick="sendBotMessage()">SEND MESSAGE</button>
+                    <button id="generate-button" class="blue-button" style="float:right;margin-right:10px;" onClick="generateBotImage()">GENERATE IMAGE</button>
+                </div>
+
+                <div class="base-row" id="image-render" style="margin-top:30px;">
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+
+    async function generateBotImage() {
+        // CHECK FOR INPUTS AND BOTS AVAIALBLE
+        let message_input = document.getElementById("message-input").value;
+        let bot_input = document.getElementById("bot-selection");
+        if((bot_input.value.length > 0)&&(message_input.length > 0)) {
+
+            // SHOW LOADING SPINNER
+            document.getElementById("send-loader").style.display='block';
+            document.getElementById("send-button").style.display='none';
+            
+            // SHOW MESSAGE IN BOX AND CLEAR FORM
+            showMessage('You','[Generate Image] '+message_input);   
+            document.getElementById("message-input").value = '';
+            
+            const response = await fetch(
+                `/`+bot_input.value+`/image`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: message_input,
+                        height:300,
+                        width:300,
+                        userId: "user",
+                        userName: "User",
+                    }),
+                }
+            );
+
+            const data = await response.json();
+            console.log(data);
+            // SHOW BOT MESSAGE
+            if(data['images'].length > 0){
+                let bot_name = bot_input.options[bot_input.selectedIndex].text;
+                showImage(bot_name,data['images']);   
+            } else {
+                showMessage(bot_name,"Couldn't Generate Image"); 
+            }
+            
+            // TURN SEND BUTTON BACK ON
+            document.getElementById("send-loader").style.display='none';
+            document.getElementById("send-button").style.display='block';
+
+        } else {
+            alert('Check Your Image Prompt and Bot Selection');
+        }
+    }
+
+    function showImage(bot_name,image_data) {
+        if(image_data.length > 0) {
+            let image_shell = document.getElementById("image-render");
+            image_shell.innerHTML = '';
+            for(var i = 0; i < 1;i++) {
+                let image_tag = document.createElement('img');
+                image_tag.src=image_data[i]['image'];
+                image_tag.style.width="100%"
+                image_tag.title=image_data[i]['caption'];
+                image_shell.appendChild(image_tag);
+
+                showMessage(bot_name,"I call it "+image_data[i]['caption']);
+            }
+        }
+    }
+
+    async function sendBotMessage() {
+
+        // CHECK FOR INPUTS AND BOTS AVAIALBLE
+        let message_input = document.getElementById("message-input").value;
+        let bot_input = document.getElementById("bot-selection");
+        if((bot_input.value.length > 0)&&(message_input.length > 0)) {
+
+            // SHOW LOADING SPINNER
+            document.getElementById("send-loader").style.display='block';
+            document.getElementById("send-button").style.display='none';
+            
+            // SHOW MESSAGE IN BOX AND CLEAR FORM
+            showMessage('You',message_input);   
+            document.getElementById("message-input").value = '';
+            
+            const response = await fetch(
+                `/`+bot_input.value+`/message`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        text: message_input,
+                        userId: "user",
+                        userName: "User",
+                    }),
+                }
+            );
+
+            const data = await response.json();
+            
+            // SHOW BOT MESSAGE
+            if(data.length > 0){
+                showMessage(data[0].user,data[0].text);  
+            } else {
+                showMessage(bot_input.text,"Couldn't Get a Response"); 
+            }
+            
+            // TURN SEND BUTTON BACK ON
+            document.getElementById("send-loader").style.display='none';
+            document.getElementById("send-button").style.display='block';
+
+        } else {
+            alert('Check Your Message and Bot Selection');
+        }
+    }
+
+    function showMessage(username,message) {
+        let user_color = 'green';
+        if(username != 'You') {
+            user_color = 'yellow';
+        }
+        let message_box = document.getElementById("message-box");
+        let new_message_row = document.createElement('div');
+        new_message_row.className = "message_row";
+        new_message_row.innerHTML = '<span class="'+user_color+'-text"><b>'+username+':</b></span> '+message;
+
+        message_box.appendChild(new_message_row);
+        message_box.scrollTop = message_box.scrollHeight;
+    }
+
+    async function getActiveBots() {
+        const response = await fetch(
+            `agents`,
+            {
+                method: "GET",
+                headers: { "Content-Type": "application/json" }
+            }
+        );
+        const data = await response.json();
+
+        // LOAD SELECT FORM
+        loadSelectForm(data['agents']);
+    }
+
+    function loadSelectForm(agents) {
+        let bot_select = document.getElementById("bot-selection");
+        for(var i = 0; i < agents.length;i++) {
+            let tmp_bot_id = agents[i]['id'];
+            let tmp_bot_name = agents[i]['name'];
+
+            let option_html = document.createElement('option');
+            option_html.value = tmp_bot_id;
+            option_html.innerHTML= tmp_bot_name;
+            bot_select.appendChild(option_html); 
+        }
+    }
+
+    function startMessageKeypress() {
+        const inputField = document.getElementById('message-input');
+
+        inputField.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendBotMessage();
+            }
+        });
+    }
+
+    // LOAD KEYPRESS ON INPUT
+    startMessageKeypress();
+
+    // PULL ACTIVE BOT LIST
+    getActiveBots();
+</script>
+</html>

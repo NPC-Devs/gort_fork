@@ -13,6 +13,16 @@ export function createApiRouter(agents: Map<string, AgentRuntime>) {
     router.use(bodyParser.json());
     router.use(bodyParser.urlencoded({ extended: true }));
 
+    // Custom Routes
+    router.get('/css/:cssfile', (req, res)  => {
+        res.sendFile(process.cwd() + '/public/css/'+req.params.cssfile);
+    });
+
+    router.get("/", (req, res)  => {
+        res.sendFile(process.cwd() + '/public/index.html');
+    });
+
+    // Standard Routes
     router.get("/hello", (req, res) => {
         res.json({ message: "Hello World!" });
     });
@@ -65,6 +75,18 @@ export function createApiRouter(agents: Map<string, AgentRuntime>) {
             res.status(500).json({ error: "Failed to fetch guilds" });
         }
     });
+
+    
+
+    router.get(
+        "/api/active_agents",
+        async (req: express.Request, res: express.Response) => {
+            console.log("Pulling Active Agents");
+            let active_agents = this.agents_list;
+
+            res.json(active_agents);
+        }
+    );
 
     return router;
 }
